@@ -134,9 +134,7 @@ window.addEventListener('DOMContentLoaded', () => {
     // Modal
 
     const modal = document.querySelector('.modal'),
-        modalOpen = document.querySelectorAll('[data-modal]'),
-        modalClose = document.querySelector('[data-close]'),
-        modalDialog = document.querySelector('.modal__dialog');
+        modalOpen = document.querySelectorAll('[data-modal]');
 
     function openModal() {
         modal.classList.add('show');
@@ -145,6 +143,8 @@ window.addEventListener('DOMContentLoaded', () => {
     }
 
     function closeModal() {
+        document.querySelector('.modal__dialog').classList.add('show');
+        document.querySelector('.modal__dialog').classList.remove('hide');
         modal.classList.add('hide');
         modal.classList.remove('show');
     }
@@ -162,19 +162,15 @@ window.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    modalClose.addEventListener('click', () => {
-        closeModal();
-    });
-
     modal.addEventListener('click', (e) => {
-        if (e.target === modal) {
+        if (e.target === modal || e.target.getAttribute('data-close') === '') {
             closeModal();
         }
     });
 
-    //const modalTimerId = setTimeout(openModal, 20000);
+    const modalTimerId = setTimeout(openModal, 200000);
 
-    //window.addEventListener('scroll', openModalByScroll);
+    window.addEventListener('scroll', openModalByScroll);
 
     // Tabs classes
 
@@ -229,34 +225,100 @@ window.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    new FoodTab(
-        'img/tabs/vegy.jpg',
-        'vegy',
-        'Меню "Фитнес"',
-        'Меню "Фитнес" - это новый подход к приготовлению блюд: больше свежих овощей и фруктов. Продукт активных и здоровых людей. Это абсолютно новый продукт с оптимальной ценой и высоким качеством!',
-        3,
-        '.menu .container',
-        'menu__item',
-        'big'
-    ).render();
+    const getResource = async(url) => {
+        const res = await fetch(url);
+        if (!res.ok) {
+            throw new Error(`Could not fetch ${url}, status: ${res.status}`);
+        }
+        return await res.json();
+    };
 
-    new FoodTab(
-        'img/tabs/elite.jpg',
-        'elite',
-        'Меню “Премиум”',
-        'В меню “Премиум” мы используем не только красивый дизайн упаковки, но и качественное исполнение блюд. Красная рыба, морепродукты, фрукты - ресторанное меню без похода в ресторан!',
-        8,
-        '.menu .container',
-        'menu__item'
-    ).render();
+    getResource(' http://localhost:3000/menu')
+        .then(data => {
+            data.forEach(({ img, altimg, title, descr, price }) => {
+                new FoodTab(img, altimg, title, descr, price, '.menu .container').render();
+            });
+        });
 
-    new FoodTab(
-        'img/tabs/post.jpg',
-        'post',
-        'Меню "Постное"',
-        'Меню “Постное” - это тщательный подбор ингредиентов: полное отсутствие продуктов животного происхождения, молоко из миндаля, овса, кокоса или гречки, правильное количество белков за счет тофу и импортных вегетарианских стейков.',
-        6,
-        '.menu .container',
-        'menu__item'
-    ).render();
+    // Forms
+
+    const forms = document.querySelectorAll('form'),
+        message = {
+            loading: 'icons/spinner.svg',
+            success: 'Спасибо, мы с вами свяжемся',
+            failure: 'Что-то пошло не так'
+        },
+        inputs = document.querySelectorAll('form input');
+
+    forms.forEach(form => {
+        bindPostData(form);
+    });
+
+    const postData = async(url, data) => {
+        const res = await fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-type': 'application/json'
+            },
+            body: data
+        });
+
+        return await res.json();
+    };
+
+    function bindPostData(form) {
+        form.addEventListener('submit', (e) => {
+            e.preventDefault();
+
+            const statusMessage = document.createElement('img');
+
+            statusMessage.src = message.loading;
+            statusMessage.style.cssText = `
+                display: block;
+                margin: 30px auto 0;
+            `;
+            form.insertAdjacentElement('afterend', statusMessage);
+
+            const formData = new FormData(form);
+
+            const json = JSON.stringify(Object.fromEntries(formData.entries()));
+
+            postData('http://localhost:3000/requests', json)
+                .then(data => {
+                    console.log(data);
+                    showThanksModal(message.success);
+                    statusMessage.remove();
+                }).catch(() => {
+                    showThanksModal(message.failure);
+                }).finally(() => {
+                    inputs.forEach(input => {
+                        input.value = '';
+                    });
+                });
+        });
+    }
+
+    function showThanksModal(message) {
+        const previousModalDialog = document.querySelector('.modal__dialog');
+        previousModalDialog.classList.remove('show');
+        previousModalDialog.classList.add('hide');
+        openModal();
+
+        const thanksModal = document.createElement('div');
+        thanksModal.classList.add('modal__dialog');
+        thanksModal.innerHTML = `
+            <div class="modal__content">
+                <div class="modal__close" data-close>×</div>
+                <div class="modal__title">${message}</div>
+            </div>
+         `;
+
+        document.querySelector('.modal').append(thanksModal);
+        setTimeout(() => {
+            thanksModal.remove();
+            previousModalDialog.classList.add('show');
+            previousModalDialog.classList.remove('hide');
+            closeModal();
+        }, 4000);
+    }
 });
