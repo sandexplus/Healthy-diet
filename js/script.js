@@ -1,5 +1,10 @@
 'use strict';
-
+require('es7-object-polyfill');
+import 'formdata-polyfill';
+import 'dom-node-polyfills';
+import 'whatwg-fetch';
+import "core-js/stable/symbol";
+require('es6-promise').polyfill();
 import tabs from './modules/tabs';
 import timer from './modules/timer';
 import slider from './modules/slider';
@@ -25,4 +30,5 @@ window.addEventListener('DOMContentLoaded', () => {
     forms('form', modalTimerId);
     foodTabs();
     calculator();
+
 });
